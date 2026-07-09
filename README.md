@@ -1,3 +1,3 @@
 # drone_flight_checklist
 
-A new Flutter project.
+New Flutter project.
