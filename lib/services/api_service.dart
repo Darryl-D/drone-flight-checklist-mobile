@@ -1,0 +1,26 @@
+import 'package:dio/dio.dart';
+import 'package:retrofit/retrofit.dart';
+import 'package:drone_checklist/model/sync_model.dart';
+part 'api_service.g.dart';
+
+@RestApi(baseUrl: "http://103.102.152.249/webdrone/")
+abstract class ApiService {
+  factory ApiService(Dio dio, {String baseUrl}) = _ApiService;
+
+  // Login API
+  @POST("api/login.php")
+  Future<HttpResponse> login(@Body() Map<String, dynamic> body);
+
+  // Get Template Detail from Server - Updated to POST and FormUrlEncoded to match download.php
+  @POST("class/database/download.php")
+  @FormUrlEncoded()
+  Future<dynamic> downloadTemplate(@Field("templateId") int templateId);
+
+  // Sync Data API
+  @POST("class/database/syncData.php")
+  Future<HttpResponse> syncData(@Body() SyncModel sync);
+
+  // Get All Template from Server
+  @GET("class/database/template/all.php")
+  Future<String> getAllTemplate(@Query("username") String username);
+}
