@@ -117,7 +117,6 @@ class _FormViewState extends State<FormView> {
         var getForm = await DatabaseHelper.getFormById(selectedForm);
         if (getForm == null) return;
 
-        // Check for required fields before syncing
         bool allRequiredAnswered = true;
         String missingQuestion = "";
 
@@ -277,7 +276,7 @@ class _FormViewState extends State<FormView> {
                   ),
                 ),
               );
-              _callData(); // Refresh data after returning from FormFill
+              _callData();
             },
             trailing: Row(
               mainAxisSize: MainAxisSize.min,

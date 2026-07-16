@@ -160,15 +160,15 @@ class _TemplateViewState extends State<TemplateView> {
       );
 
       await DatabaseHelper.insertTemplate(templateModel, _username);
-      await _checkDownloadedTemplates(); // Update the set of downloaded IDs
+      await _checkDownloadedTemplates();
 
       if (mounted) {
-        Navigator.pop(context); // Close loading dialog
+        Navigator.pop(context);
         showAlert(context, "Success", "Template downloaded successfully", AlertType.success, () {});
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context); // Close loading dialog
+        Navigator.pop(context);
         showAlert(context, "Failed", "Failed to download template: $e", AlertType.failed, () {});
       }
     }
@@ -232,7 +232,7 @@ class _TemplateViewState extends State<TemplateView> {
                                   builder: (context) => TemplateSelect(
                                         templateId: template.id,
                                       )));
-                          _checkDownloadedTemplates(); // Refresh when coming back
+                          _checkDownloadedTemplates();
                         },
                       ),
                     );

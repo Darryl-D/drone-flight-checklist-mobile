@@ -17,6 +17,9 @@ class _FormFillState extends State<FormFill> {
   final Map<String, TextEditingController> _questionControllers = {};
   final Map<String, Set<String>> _checkboxValues = {};
 
+  final Map<String, TimeOfDay?> _takeOffTimes = {};
+  final Map<String, TimeOfDay?> _landingTimes = {};
+
   List<Map<String, dynamic>>? _formData;
   Map<String, dynamic>? _fullFormData = {};
   bool _isLoading = true;
@@ -216,8 +219,37 @@ class _FormFillState extends State<FormFill> {
       
       if (flights.length > 1) {
         flights.removeWhere((f) => f['flightNum'] == flightNum);
+        _questionControllers.keys.where((k) => k.endsWith('-$flightNum')).toList().forEach((k) {
+          _questionControllers[k]?.dispose();
+          _questionControllers.remove(k);
+          _checkboxValues.remove(k);
+          _takeOffTimes.remove(k);
+          _landingTimes.remove(k);
+        });
       }
     });
+  }
+
+  void _calculateDuration(String uniqueId) {
+    final takeOff = _takeOffTimes[uniqueId];
+    final landing = _landingTimes[uniqueId];
+
+    if (takeOff != null && landing != null) {
+      int takeOffMinutes = takeOff.hour * 60 + takeOff.minute;
+      int landingMinutes = landing.hour * 60 + landing.minute;
+
+      int diffMinutes = landingMinutes - takeOffMinutes;
+      if (diffMinutes < 0) {
+        diffMinutes += 24 * 60;
+      }
+
+      int hours = diffMinutes ~/ 60;
+      int minutes = diffMinutes % 60;
+
+      String result = "${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}";
+      _questionControllers[uniqueId]?.text = result;
+      setState(() {});
+    }
   }
 
   bool _isInstanceCompleted(Map<String, dynamic> section, Map<String, dynamic> flight) {
@@ -946,6 +978,102 @@ class _FormFillState extends State<FormFill> {
                   }
                 }
               },
+            ),
+          if (question['qType'] == 'duration')
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("Take Off", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          const SizedBox(height: 4),
+                          InkWell(
+                            onTap: _isSync ? null : () async {
+                              TimeOfDay? picked = await showTimePicker(
+                                context: context,
+                                initialTime: _takeOffTimes[controllerKey] ?? TimeOfDay.now(),
+                              );
+                              if (picked != null) {
+                                setState(() => _takeOffTimes[controllerKey] = picked);
+                                _calculateDuration(controllerKey);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(_takeOffTimes[controllerKey]?.format(context) ?? "Select"),
+                                  const Icon(Icons.access_time, size: 18, color: Color(0xFFF9A825)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("Landing", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          const SizedBox(height: 4),
+                          InkWell(
+                            onTap: _isSync ? null : () async {
+                              TimeOfDay? picked = await showTimePicker(
+                                context: context,
+                                initialTime: _landingTimes[controllerKey] ?? TimeOfDay.now(),
+                              );
+                              if (picked != null) {
+                                setState(() => _landingTimes[controllerKey] = picked);
+                                _calculateDuration(controllerKey);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(_landingTimes[controllerKey]?.format(context) ?? "Select"),
+                                  const Icon(Icons.access_time, size: 18, color: Color(0xFFF9A825)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text("Total Duration", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
+                TextFormField(
+                  controller: controller,
+                  readOnly: true,
+                  decoration: InputDecoration(
+                    hintText: "00:00",
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  ),
+                  validator: (value) => isRequired && (value == null || value.isEmpty) ? 'Take off and Landing times are required' : null,
+                ),
+              ],
             ),
         ],
       ),

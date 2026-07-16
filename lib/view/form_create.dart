@@ -25,6 +25,9 @@ class _FormCreateState extends State<FormCreate> {
   final Map<String, TextEditingController> _questionControllers = {};
   final Map<String, Set<String>> _checkboxValues = {};
 
+  final Map<String, TimeOfDay?> _takeOffTimes = {};
+  final Map<String, TimeOfDay?> _landingTimes = {};
+
   Map<String, dynamic>? _templateData = {};
   Map<String, dynamic> _formData = {};
   final Map<String, String> _questionName = {};
@@ -118,7 +121,6 @@ class _FormCreateState extends State<FormCreate> {
     
     setState(() {
       _instanceIndices[section]!.remove(index);
-      // Clean up controllers
       _questionControllers.keys.where((k) => k.startsWith('$section-$index-')).toList().forEach((k) {
         _questionControllers[k]?.dispose();
         _questionControllers.remove(k);
@@ -127,6 +129,8 @@ class _FormCreateState extends State<FormCreate> {
         _questionType.remove(k);
         _questionOptions.remove(k);
         _questionRequired.remove(k);
+        _takeOffTimes.remove(k);
+        _landingTimes.remove(k);
       });
     });
   }
@@ -151,7 +155,6 @@ class _FormCreateState extends State<FormCreate> {
       
       var section = parts[0];
       var instanceIndex = int.parse(parts[1]);
-      // var questionId = parts[2];
 
       organizedData.putIfAbsent(section, () => {});
       organizedData[section]!.putIfAbsent(instanceIndex, () => []);
@@ -179,14 +182,12 @@ class _FormCreateState extends State<FormCreate> {
     for (var section in ['assessment', 'pre', 'post']) {
       if (organizedData.containsKey(section)) {
         if (section == 'assessment') {
-          // Assessment usually only has one instance, but we follow the data structure
           var firstInstance = organizedData[section]!.values.first;
           structuredData.add({"type": "assessment", "answer": firstInstance});
         } else {
           List<Map<String, dynamic>> flights = [];
           int flightNum = 1;
-          
-          // Sort indices to maintain order
+
           var indices = _instanceIndices[section]!;
           for (var idx in indices) {
             if (organizedData[section]!.containsKey(idx)) {
@@ -272,6 +273,28 @@ class _FormCreateState extends State<FormCreate> {
         return 'Post-Flight Form';
       default:
         return 'Form';
+    }
+  }
+
+  void _calculateDuration(String uniqueId) {
+    final takeOff = _takeOffTimes[uniqueId];
+    final landing = _landingTimes[uniqueId];
+
+    if (takeOff != null && landing != null) {
+      int takeOffMinutes = takeOff.hour * 60 + takeOff.minute;
+      int landingMinutes = landing.hour * 60 + landing.minute;
+
+      int diffMinutes = landingMinutes - takeOffMinutes;
+      if (diffMinutes < 0) {
+        diffMinutes += 24 * 60;
+      }
+
+      int hours = diffMinutes ~/ 60;
+      int minutes = diffMinutes % 60;
+
+      String result = "${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}";
+      _questionControllers[uniqueId]?.text = result;
+      setState(() {});
     }
   }
 
@@ -470,7 +493,6 @@ class _FormCreateState extends State<FormCreate> {
             ),
             const SizedBox(height: 16),
 
-            // List instances
             ...indices.asMap().entries.map((entry) {
               int displayIndex = entry.key + 1;
               int actualIndex = entry.value;
@@ -871,6 +893,102 @@ class _FormCreateState extends State<FormCreate> {
                   }
                 }
               },
+            ),
+          if (question['type'] == 'duration')
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("Take Off", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          const SizedBox(height: 4),
+                          InkWell(
+                            onTap: () async {
+                              TimeOfDay? picked = await showTimePicker(
+                                context: context,
+                                initialTime: _takeOffTimes[uniqueQuestionId] ?? TimeOfDay.now(),
+                              );
+                              if (picked != null) {
+                                setState(() => _takeOffTimes[uniqueQuestionId] = picked);
+                                _calculateDuration(uniqueQuestionId);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(_takeOffTimes[uniqueQuestionId]?.format(context) ?? "Select"),
+                                  const Icon(Icons.access_time, size: 18, color: Color(0xFFF9A825)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("Landing", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          const SizedBox(height: 4),
+                          InkWell(
+                            onTap: () async {
+                              TimeOfDay? picked = await showTimePicker(
+                                context: context,
+                                initialTime: _landingTimes[uniqueQuestionId] ?? TimeOfDay.now(),
+                              );
+                              if (picked != null) {
+                                setState(() => _landingTimes[uniqueQuestionId] = picked);
+                                _calculateDuration(uniqueQuestionId);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(_landingTimes[uniqueQuestionId]?.format(context) ?? "Select"),
+                                  const Icon(Icons.access_time, size: 18, color: Color(0xFFF9A825)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text("Total Duration", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
+                TextFormField(
+                  controller: controller,
+                  readOnly: true,
+                  decoration: InputDecoration(
+                    hintText: "00:00",
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  ),
+                  validator: (value) => isRequired && (value == null || value.isEmpty) ? 'Take off and Landing times are required' : null,
+                ),
+              ],
             ),
         ],
       ),

@@ -28,8 +28,7 @@ class _LoginViewState extends State<LoginView> {
     try {
       final dio = Dio();
       final apiService = ApiService(dio);
-      
-      // Sending 'username' as the key because the backend usually expects one field for identifier
+
       final response = await apiService.login({
         "username": _identifierController.text,
         "password": _passwordController.text,
@@ -37,8 +36,7 @@ class _LoginViewState extends State<LoginView> {
       
       if (response.response.statusCode == 200) {
         final prefs = await SharedPreferences.getInstance();
-        
-        // Try to get data from response if the API returns user details
+
         final data = response.data;
         if (data != null && data is Map) {
           final username = data['username']?.toString() ?? _identifierController.text;
@@ -49,7 +47,6 @@ class _LoginViewState extends State<LoginView> {
             await prefs.setString('email', email);
           }
         } else {
-          // Fallback if API only returns status
           await prefs.setString('username', _identifierController.text);
         }
         
